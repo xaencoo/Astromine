@@ -1,0 +1,51 @@
+name: Build AstroMine from ZIP
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          mkdir -p project
+          unzip AstroMine.zip -d project
+          ls -la project
+
+      - name: Find project dir
+        id: find
+        run: |
+          if [ -f project/AstroMine/build.gradle ]; then
+            echo "dir=project/AstroMine" >> $GITHUB_OUTPUT
+          elif [ -f project/build.gradle ]; then
+            echo "dir=project" >> $GITHUB_OUTPUT
+          else
+            echo "dir=." >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+
+      - name: Grant execute permission
+        run: chmod +x ${{ steps.find.outputs.dir }}/gradlew
+
+      - name: Build with Gradle
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: ./gradlew build --no-daemon
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: AstroMine-JAR
+          path: ${{ steps.find.outputs.dir }}/build/libs/*.jar
+          retention-days: 30
